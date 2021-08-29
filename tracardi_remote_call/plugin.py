@@ -85,7 +85,7 @@ def register() -> Plugin:
                 "cookies": {},
                 "sslCheck": True,
             },
-            version="0.1.3",
+            version="0.1.5",
             author="Risto Kowaczewski",
             license="MIT",
             manual="remote_call_action"

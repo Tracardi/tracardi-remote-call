@@ -1,7 +1,9 @@
-from typing import Optional
+import json
+from json import JSONDecodeError
+from typing import Optional, Union
 from enum import Enum
 from tracardi.process_engine.tql.utils.dictonary import flatten
-from pydantic import AnyHttpUrl, BaseModel
+from pydantic import AnyHttpUrl, BaseModel, validator
 
 
 class Method(str, Enum):
@@ -11,21 +13,45 @@ class Method(str, Enum):
     delete = 'delete'
 
 
+class Content(BaseModel):
+    type: str
+    content: Optional[str]
+
+    @validator("content")
+    def validate_content(cls, value, values):
+        if 'type' in values and values['type'] == 'application/json':
+            try:
+                # Try parsing JSON
+                json.loads(value)
+            except JSONDecodeError as e:
+                raise ValueError(str(e))
+        return value
+
+    def load_body_as_dict(self):
+        return json.loads(self.content)
+
+
 class RemoteCallConfiguration(BaseModel):
     url: AnyHttpUrl
     timeout: int = 30
     method: Method = Method.get
     headers: Optional[dict] = {}
     cookies: Optional[dict] = {}
-    sslCheck: bool = True
+    ssl_check: bool = True
+    body: Content
 
-    def get_params_as_json(self, params):
-        if self.method == 'get':
-            params = flatten(params)
+    def get_params(self) -> dict:
+        if self.body.type == 'application/json':
+            body = self.body.load_body_as_dict()
+
+            if self.method.lower() == 'get':
+                params = flatten(body)
+                return {
+                    "params": params
+                }
+
             return {
-                "params": params
+                "json": body
             }
-
-        return {
-            "json": params
-        }
+        else:
+            return {"data": self.body.content.encode('utf-8')}

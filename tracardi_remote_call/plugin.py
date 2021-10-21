@@ -1,25 +1,21 @@
 import asyncio
 import json
 import aiohttp
-from datetime import datetime
 from aiohttp import ClientConnectorError
-from tracardi_plugin_sdk.domain.register import Plugin, Spec, MetaData
+from tracardi_plugin_sdk.domain.register import Plugin, Spec, MetaData, Form, FormGroup, FormField, FormComponent
 from tracardi_plugin_sdk.domain.result import Result
 from tracardi_plugin_sdk.action_runner import ActionRunner
-
 from tracardi_remote_call.model.configuration import RemoteCallConfiguration
+
+
+def validate(config: dict) -> RemoteCallConfiguration:
+    return RemoteCallConfiguration(**config)
 
 
 class RemoteCallAction(ActionRunner):
 
     def __init__(self, **kwargs):
-        self.config = RemoteCallConfiguration(**kwargs)
-
-    @staticmethod
-    def _datetime_handler(date):
-        if isinstance(date, datetime):
-            return date.isoformat()
-        raise TypeError("Unknown type")
+        self.config = validate(kwargs)
 
     @staticmethod
     def _validate_key_value(values, label):
@@ -36,25 +32,25 @@ class RemoteCallAction(ActionRunner):
             self._validate_key_value(self.config.headers, "Header")
             self._validate_key_value(self.config.cookies, "Cookie")
 
+            self.config.headers['ContentType'] = self.config.body.type
+
             timeout = aiohttp.ClientTimeout(total=self.config.timeout)
             async with aiohttp.ClientSession(timeout=timeout) as session:
 
-                payload = json.dumps(payload, default=self._datetime_handler)
-                payload = json.loads(payload)
-
-                params = self.config.get_params_as_json(payload)
+                params = self.config.get_params()
 
                 async with session.request(
                         method=self.config.method,
                         url=str(self.config.url),
                         headers=self.config.headers,
-                        ssl=self.config.sslCheck,
+                        ssl=self.config.ssl_check,
                         **params
                 ) as response:
-                    # todo add headers and cookies
+
                     result = {
                         "status": response.status,
-                        "content": await response.json()
+                        "content": await response.json(),
+                        "cookies": response.cookies
                     }
 
                     if response.status in [200, 201, 202, 203]:
@@ -83,9 +79,72 @@ def register() -> Plugin:
                 "timeout": 30,
                 "headers": {},
                 "cookies": {},
-                "sslCheck": True,
+                "ssl_check": True,
+                "body": {"type": "application/json", "content": "{}"}
             },
-            version="0.1.5",
+            form=Form(groups=[
+                FormGroup(
+                    name="Remote call settings",
+                    fields=[
+                        FormField(
+                            id="method",
+                            name="Method",
+                            description="Select API request method.",
+                            component=FormComponent(type="select", props={
+                                "label": "Method",
+                                "items": {
+                                    "get": "GET",
+                                    "port": "POST",
+                                    "put": "PUT",
+                                    "delete": "DELETE"
+                                }
+                            })
+                        ),
+                        FormField(
+                            id="url",
+                            name="URL",
+                            description="Type URL to be called.",
+                            component=FormComponent(type="text", props={"label": "Url"})
+                        ),
+                        FormField(
+                            id="body",
+                            name="Content",
+                            description="Type content to be send. By selecting one of the tabs you define the request content-type.",
+                            component=FormComponent(type="contentInput", props={"label": "Content", "rows": 13})
+                        ),
+                    ]),
+                FormGroup(
+                    name="Advanced settings",
+                    description="Set additional settings of remote request. Such as timeout, headers, etc.",
+                    fields=[
+                        FormField(
+                            id="timeout",
+                            name="Timeout",
+                            description="Type value in seconds for call time-out.",
+                            component=FormComponent(type="text", props={"label": "Time-out"})
+                        ),
+                        FormField(
+                            id="ssl_check",
+                            name="Validate SSL certificate",
+                            description="Type if the SSL certificate must be checked.",
+                            component=FormComponent(type="bool", props={"label": "Check and validate SSL certificate."})
+                        ),
+                        FormField(
+                            id="headers",
+                            name="Request headers",
+                            description="Type key and value for request headers.",
+                            component=FormComponent(type="keyValueList", props={"label": "Request headers"})
+                        ),
+                        FormField(
+                            id="cookies",
+                            name="Cookies",
+                            description="Type key and value for cookies.",
+                            component=FormComponent(type="keyValueList", props={"label": "Cookies"})
+                        )
+                    ]
+                ),
+            ]),
+            version="0.6.0",
             author="Risto Kowaczewski",
             license="MIT",
             manual="remote_call_action"

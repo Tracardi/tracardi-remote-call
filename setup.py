@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='tracardi-remote-call',
-    version='0.1.5',
+    version='0.6.0',
     description='This plugin calls remote API.',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -13,7 +13,7 @@ setup(
     author_email='risto.kowaczewski@gmail.com',
     packages=['tracardi_remote_call'],
     install_requires=[
-        'tracardi_plugin_sdk',
+        'tracardi_plugin_sdk>=0.6.22',
         'tracardi',
         'pydantic',
         'asyncio',

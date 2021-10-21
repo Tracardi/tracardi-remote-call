@@ -74,7 +74,7 @@ def register() -> Plugin:
             inputs=['payload'],
             outputs=["response", "error"],
             init={
-                "method": "get",
+                "method": "post",
                 "url": None,
                 "timeout": 30,
                 "headers": {},
@@ -94,7 +94,7 @@ def register() -> Plugin:
                                 "label": "Method",
                                 "items": {
                                     "get": "GET",
-                                    "port": "POST",
+                                    "post": "POST",
                                     "put": "PUT",
                                     "delete": "DELETE"
                                 }

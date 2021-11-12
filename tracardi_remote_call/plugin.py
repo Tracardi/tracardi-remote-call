@@ -1,5 +1,4 @@
 import asyncio
-import json
 import aiohttp
 from aiohttp import ClientConnectorError
 from tracardi_plugin_sdk.domain.register import Plugin, Spec, MetaData, Form, FormGroup, FormField, FormComponent
